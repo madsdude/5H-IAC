@@ -1,6 +1,15 @@
 - name: Test forbindelse til routere
   hosts: isp
   gather_facts: no
+  connection: ansible.netcommon.network_cli
+
+  vars:
+    ansible_network_os: cisco.ios.ios
+    ansible_user: admin
+    ansible_password: admin
+    ansible_become: true
+    ansible_become_method: enable
+    ansible_become_password: admin
 
   tasks:
     - name: Kør show version
@@ -9,6 +18,6 @@
           - show version
       register: output
 
-    - name: Vis hostname output
+    - name: Vis output
       debug:
         var: output.stdout_lines

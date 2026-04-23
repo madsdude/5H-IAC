@@ -1,1 +1,14 @@
+- name: Test forbindelse til routere
+  hosts: isp
+  gather_facts: no
 
+  tasks:
+    - name: Kør show version
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: output
+
+    - name: Vis hostname output
+      debug:
+        var: output.stdout_lines

@@ -1,0 +1,11 @@
+- name: Test debug
+  hosts: isp
+  gather_facts: no
+
+  tasks:
+    - name: Vis connection
+      debug:
+        msg:
+          - "connection={{ ansible_connection | default('IKKE SAT') }}"
+          - "network_os={{ ansible_network_os | default('IKKE SAT') }}"
+          - "host={{ inventory_hostname }}"

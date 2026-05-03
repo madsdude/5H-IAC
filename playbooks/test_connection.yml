@@ -1,15 +1,15 @@
 - name: Test forbindelse til routere
   hosts: isp
   gather_facts: no
-  connection: ansible.netcommon.network_cli
 
   vars:
+    ansible_connection: ansible.netcommon.network_cli
     ansible_network_os: cisco.ios.ios
-    ansible_user: admin
-    ansible_password: admin
-    ansible_become: true
-    ansible_become_method: enable
-    ansible_become_password: admin
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ lookup('env', 'SSHA') }}"
+    ansible_password: "{{ lookup('env', 'SSHP') }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ lookup('env', 'SSH_KEX') }}"
 
   tasks:
     - name: Kør show version

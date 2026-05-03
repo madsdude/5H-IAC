@@ -1,0 +1,35 @@
+- name: Hent data fra ISP-routere
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent show version
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: show_version
+
+    - name: Hent show ip interface brief
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: show_ip_int_brief
+
+    - name: Vis routerdata
+      debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Management IP: {{ ansible_host }}"
+          - "Show version:"
+          - "{{ show_version.stdout_lines[0] }}"
+          - "Show ip interface brief:"
+          - "{{ show_ip_int_brief.stdout_lines[0] }}"

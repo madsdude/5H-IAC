@@ -10,6 +10,7 @@
     ansible_password: "{{ SSHP }}"
     ansible_become: false
     ansible_ssh_common_args: "{{ SSH_KEX }}"
+    customer_wan_wildcard: 0.0.0.3
 
   tasks:
     - name: Konfigurer kundeinterface
@@ -36,6 +37,23 @@
         lines:
           - ip dhcp excluded-address {{ customer_wan_ip }}
 
+    - name: Opret static route til WAN subnet via interface
+      cisco.ios.ios_config:
+        lines:
+          - ip route {{ customer_wan_network }} {{ customer_wan_mask }} {{ customer_interface }}
+
+    - name: Tilføj OSPF network i VRF
+      cisco.ios.ios_config:
+        lines:
+          - network {{ customer_wan_network }} {{ customer_wan_wildcard }} area 0
+        parents: "router ospf 10 vrf {{ vrf_name }}"
+
+    - name: Tilføj CE-IP til PBR ACL
+      cisco.ios.ios_config:
+        lines:
+          - permit ip host {{ customer_ce_ip }} any
+        parents: "ip access-list extended PBR-FILTER"
+
     - name: Opret static route til kundens LAN i VRF
       cisco.ios.ios_config:
         lines:
@@ -48,4 +66,7 @@
           - "Interface: {{ customer_interface }}"
           - "VRF: {{ vrf_name }}"
           - "WAN: {{ customer_wan_ip }} {{ customer_wan_mask }}"
+          - "WAN subnet route: {{ customer_wan_network }} {{ customer_wan_mask }} via {{ customer_interface }}"
+          - "OSPF network: {{ customer_wan_network }} {{ customer_wan_wildcard }} area 0"
+          - "PBR permit: {{ customer_ce_ip }}"
           - "LAN route: {{ customer_lan_network }} {{ customer_lan_mask }} via {{ customer_ce_ip }}"

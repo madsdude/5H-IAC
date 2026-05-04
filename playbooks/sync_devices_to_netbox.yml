@@ -1,0 +1,36 @@
+- name: Opret routere i NetBox
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent show version
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: show_version
+
+    - name: Opret device i NetBox
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ inventory_hostname }}"
+          device_type: "Cisco IOSv"
+          device_role: "Router"
+          site: "ISP"
+          status: "active"
+        state: present
+      delegate_to: localhost
+
+    - name: Vis status
+      debug:
+        msg: "Device {{ inventory_hostname }} er oprettet/opdateret i NetBox"

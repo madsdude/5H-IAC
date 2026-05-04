@@ -1,0 +1,101 @@
+- name: Opret interfaces i NetBox
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent show ip interface brief
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: show_ip_int_brief
+
+    - name: Opret Loopback1 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "Loopback1"
+          type: "virtual"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'Loopback1' in show_ip_int_brief.stdout[0]"
+
+    - name: Opret GigabitEthernet0/0 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "GigabitEthernet0/0"
+          type: "1000base-t"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'GigabitEthernet0/0' in show_ip_int_brief.stdout[0]"
+
+    - name: Opret GigabitEthernet0/1 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "GigabitEthernet0/1"
+          type: "1000base-t"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'GigabitEthernet0/1' in show_ip_int_brief.stdout[0]"
+
+    - name: Opret GigabitEthernet0/2 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "GigabitEthernet0/2"
+          type: "1000base-t"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'GigabitEthernet0/2' in show_ip_int_brief.stdout[0]"
+
+    - name: Opret GigabitEthernet0/3 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "GigabitEthernet0/3"
+          type: "1000base-t"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'GigabitEthernet0/3' in show_ip_int_brief.stdout[0]"
+
+    - name: Opret GigabitEthernet0/4 i NetBox
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          device: "{{ inventory_hostname }}"
+          name: "GigabitEthernet0/4"
+          type: "1000base-t"
+          enabled: true
+        state: present
+      delegate_to: localhost
+      when: "'GigabitEthernet0/4' in show_ip_int_brief.stdout[0]"
+
+    - name: Vis status
+      debug:
+        msg: "Interfaces er oprettet/opdateret for {{ inventory_hostname }}"

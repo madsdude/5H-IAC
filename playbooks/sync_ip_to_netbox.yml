@@ -18,44 +18,106 @@
           - show ip interface brief
       register: show_ip_int_brief
 
-    - name: Lav liste med interface-linjer
+    - name: Nulstil interface map
       set_fact:
-        int_lines: "{{ show_ip_int_brief.stdout_lines[0][1:] }}"
+        int_map: {}
 
-    - name: Opret IP-adresser i NetBox
+    - name: Byg interface/IP map
+      set_fact:
+        int_map: "{{ int_map | combine({ parts[0]: parts[1] }) }}"
+      vars:
+        parts: "{{ item.split() }}"
+      loop: "{{ show_ip_int_brief.stdout_lines[0][1:] }}"
+      when:
+        - item is string
+        - item | trim != ""
+        - item.split() | length > 1
+        - item.split()[1] != "unassigned"
+
+    - name: Opret IP på GigabitEthernet0/0
       netbox.netbox.netbox_ip_address:
         netbox_url: "{{ NETBOX_URL }}"
         netbox_token: "{{ NETBOX_TOKEN }}"
         data:
-          address: "{{ item.1 }}/{{ item.2 }}"
+          address: "{{ int_map['GigabitEthernet0/0'] }}/30"
           assigned_object:
             device: "{{ inventory_hostname }}"
-            name: "{{ item.0 }}"
+            name: "GigabitEthernet0/0"
           status: active
         state: present
-      loop:
-        - ["GigabitEthernet0/0", "{{ int_map['GigabitEthernet0/0'] | default('') }}", "30"]
-        - ["GigabitEthernet0/1", "{{ int_map['GigabitEthernet0/1'] | default('') }}", "30"]
-        - ["GigabitEthernet0/2", "{{ int_map['GigabitEthernet0/2'] | default('') }}", "30"]
-        - ["GigabitEthernet0/3", "{{ int_map['GigabitEthernet0/3'] | default('') }}", "30"]
-        - ["GigabitEthernet0/4", "{{ int_map['GigabitEthernet0/4'] | default('') }}", "30"]
-        - ["Loopback1", "{{ int_map['Loopback1'] | default('') }}", "32"]
-      when:
-        - item.1 != ""
-        - item.1 != "unassigned"
       delegate_to: localhost
+      when: int_map['GigabitEthernet0/0'] is defined
 
-    - name: Vis status
+    - name: Opret IP på GigabitEthernet0/1
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map['GigabitEthernet0/1'] }}/30"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "GigabitEthernet0/1"
+          status: active
+        state: present
+      delegate_to: localhost
+      when: int_map['GigabitEthernet0/1'] is defined
+
+    - name: Opret IP på GigabitEthernet0/2
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map['GigabitEthernet0/2'] }}/30"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "GigabitEthernet0/2"
+          status: active
+        state: present
+      delegate_to: localhost
+      when: int_map['GigabitEthernet0/2'] is defined
+
+    - name: Opret IP på GigabitEthernet0/3
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map['GigabitEthernet0/3'] }}/30"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "GigabitEthernet0/3"
+          status: active
+        state: present
+      delegate_to: localhost
+      when: int_map['GigabitEthernet0/3'] is defined
+
+    - name: Opret IP på GigabitEthernet0/4
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map['GigabitEthernet0/4'] }}/30"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "GigabitEthernet0/4"
+          status: active
+        state: present
+      delegate_to: localhost
+      when: int_map['GigabitEthernet0/4'] is defined
+
+    - name: Opret IP på Loopback1
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map['Loopback1'] }}/32"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "Loopback1"
+          status: active
+        state: present
+      delegate_to: localhost
+      when: int_map['Loopback1'] is defined
+
+    - name: Vis parsed map
       debug:
-        msg: "IP-adresser er oprettet/opdateret for {{ inventory_hostname }}"
-
-  pre_tasks:
-    - name: Byg interface/IP map
-      set_fact:
-        int_map: "{{ int_map | default({}) | combine({parts[0]: parts[1]}) }}"
-      loop: "{{ show_ip_int_brief.stdout_lines[0][1:] | default([]) }}"
-      vars:
-        parts: "{{ item.split() }}"
-      when:
-        - item is string
-        - item | length > 0
+        var: int_map

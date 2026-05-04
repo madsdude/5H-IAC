@@ -1,0 +1,15 @@
+pe_router: ISP-PE3
+vrf_name: CUST
+customer_interface: GigabitEthernet0/3
+customer_description: Link til Kunde5
+
+customer_wan_network: 203.0.113.16
+customer_wan_ip: 203.0.113.17
+customer_wan_mask: 255.255.255.252
+customer_ce_ip: 203.0.113.18
+
+customer_lan_network: 10.30.0.0
+customer_lan_mask: 255.255.0.0
+
+dhcp_pool_name: KUNDE5-POOL
+customer_dns: 198.51.100.1

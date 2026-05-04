@@ -1,0 +1,61 @@
+- name: Opret IP-adresser i NetBox
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent show ip interface brief
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: show_ip_int_brief
+
+    - name: Lav liste med interface-linjer
+      set_fact:
+        int_lines: "{{ show_ip_int_brief.stdout_lines[0][1:] }}"
+
+    - name: Opret IP-adresser i NetBox
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ item.1 }}/{{ item.2 }}"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "{{ item.0 }}"
+          status: active
+        state: present
+      loop:
+        - ["GigabitEthernet0/0", "{{ int_map['GigabitEthernet0/0'] | default('') }}", "30"]
+        - ["GigabitEthernet0/1", "{{ int_map['GigabitEthernet0/1'] | default('') }}", "30"]
+        - ["GigabitEthernet0/2", "{{ int_map['GigabitEthernet0/2'] | default('') }}", "30"]
+        - ["GigabitEthernet0/3", "{{ int_map['GigabitEthernet0/3'] | default('') }}", "30"]
+        - ["GigabitEthernet0/4", "{{ int_map['GigabitEthernet0/4'] | default('') }}", "30"]
+        - ["Loopback1", "{{ int_map['Loopback1'] | default('') }}", "32"]
+      when:
+        - item.1 != ""
+        - item.1 != "unassigned"
+      delegate_to: localhost
+
+    - name: Vis status
+      debug:
+        msg: "IP-adresser er oprettet/opdateret for {{ inventory_hostname }}"
+
+  pre_tasks:
+    - name: Byg interface/IP map
+      set_fact:
+        int_map: "{{ int_map | default({}) | combine({parts[0]: parts[1]}) }}"
+      loop: "{{ show_ip_int_brief.stdout_lines[0][1:] | default([]) }}"
+      vars:
+        parts: "{{ item.split() }}"
+      when:
+        - item is string
+        - item | length > 0

@@ -11,6 +11,7 @@
     ansible_become: false
     ansible_ssh_common_args: "{{ SSH_KEX }}"
     customer_wan_wildcard: 0.0.0.3
+    ansible_host_key_checking: false
 
   tasks:
     - name: Konfigurer kundeinterface

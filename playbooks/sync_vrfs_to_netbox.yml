@@ -18,9 +18,9 @@
           - show running-config | section ^ip vrf
       register: vrf_config
 
-    - name: Byg liste med VRF-navne
+    - name: Byg lokale VRF-navne
       set_fact:
-        vrf_names: >-
+        local_vrf_names: >-
           {{
             vrf_config.stdout_lines[0]
             | select('match', '^ip vrf ')
@@ -28,9 +28,23 @@
             | list
           }}
 
-    - name: Vis fundne VRF'er
+    - name: Saml alle VRF'er
+      set_fact:
+        all_vrf_names: >-
+          {{
+            ansible_play_hosts
+            | map('extract', hostvars, 'local_vrf_names')
+            | select('defined')
+            | list
+            | flatten
+            | unique
+          }}
+      run_once: true
+
+    - name: Vis samlede VRF'er
       debug:
-        var: vrf_names
+        var: all_vrf_names
+      run_once: true
 
     - name: Opret VRF'er i NetBox
       netbox.netbox.netbox_vrf:
@@ -39,5 +53,6 @@
         data:
           name: "{{ item }}"
         state: present
-      loop: "{{ vrf_names }}"
+      loop: "{{ all_vrf_names }}"
       delegate_to: localhost
+      run_once: true

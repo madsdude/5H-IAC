@@ -1,0 +1,23 @@
+- name: Hent CDP naboer
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent CDP neighbors detail
+      cisco.ios.ios_command:
+        commands:
+          - show cdp neighbors detail
+      register: cdp_output
+
+    - name: Vis rå CDP output
+      debug:
+        var: cdp_output.stdout_lines

@@ -10,6 +10,13 @@
     ansible_password: "{{ SSHP }}"
     ansible_become: false
     ansible_ssh_common_args: "{{ SSH_KEX }}"
+    interface_prefix_map:
+      Loopback1: 32
+      GigabitEthernet0/0: 30
+      GigabitEthernet0/1: 30
+      GigabitEthernet0/2: 30
+      GigabitEthernet0/3: 30
+      GigabitEthernet0/4: 30
 
   tasks:
     - name: Hent show ip interface brief
@@ -18,7 +25,13 @@
           - show ip interface brief
       register: show_ip_int_brief
 
-    - name: Nulstil interface map
+    - name: Hent interface config
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | section ^interface
+      register: show_run_interfaces
+
+    - name: Nulstil interface IP map
       set_fact:
         int_map: {}
 
@@ -34,90 +47,63 @@
         - item.split() | length > 1
         - item.split()[1] != "unassigned"
 
-    - name: Opret IP på GigabitEthernet0/0
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['GigabitEthernet0/0'] }}/30"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "GigabitEthernet0/0"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['GigabitEthernet0/0'] is defined
+    - name: Nulstil interface VRF map
+      set_fact:
+        int_vrf_map: {}
 
-    - name: Opret IP på GigabitEthernet0/1
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['GigabitEthernet0/1'] }}/30"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "GigabitEthernet0/1"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['GigabitEthernet0/1'] is defined
+    - name: Byg interface/VRF map
+      set_fact:
+        int_vrf_map: "{{ int_vrf_map | combine({ current_interface: current_vrf }) }}"
+      vars:
+        current_interface: "{{ item.0 }}"
+        current_vrf: "{{ item.1 }}"
+      loop: >-
+        {{
+          show_run_interfaces.stdout[0]
+          | regex_findall('interface\\s+(\\S+)[\\s\\S]*?ip vrf forwarding\\s+(\\S+)')
+        }}
 
-    - name: Opret IP på GigabitEthernet0/2
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['GigabitEthernet0/2'] }}/30"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "GigabitEthernet0/2"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['GigabitEthernet0/2'] is defined
-
-    - name: Opret IP på GigabitEthernet0/3
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['GigabitEthernet0/3'] }}/30"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "GigabitEthernet0/3"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['GigabitEthernet0/3'] is defined
-
-    - name: Opret IP på GigabitEthernet0/4
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['GigabitEthernet0/4'] }}/30"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "GigabitEthernet0/4"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['GigabitEthernet0/4'] is defined
-
-    - name: Opret IP på Loopback1
-      netbox.netbox.netbox_ip_address:
-        netbox_url: "{{ NETBOX_URL }}"
-        netbox_token: "{{ NETBOX_TOKEN }}"
-        data:
-          address: "{{ int_map['Loopback1'] }}/32"
-          assigned_object:
-            device: "{{ inventory_hostname }}"
-            name: "Loopback1"
-          status: active
-        state: present
-      delegate_to: localhost
-      when: int_map['Loopback1'] is defined
-
-    - name: Vis parsed map
+    - name: Vis interface IP map
       debug:
         var: int_map
+
+    - name: Vis interface VRF map
+      debug:
+        var: int_vrf_map
+
+    - name: Opret IP-adresser uden VRF
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map[item] }}/{{ interface_prefix_map[item] }}"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "{{ item }}"
+          status: active
+        state: present
+      loop: "{{ int_map.keys() | list }}"
+      when:
+        - interface_prefix_map[item] is defined
+        - int_vrf_map[item] is not defined
+        - not (inventory_hostname == 'ISP-EDGE' and item == 'GigabitEthernet0/1')
+      delegate_to: localhost
+
+    - name: Opret IP-adresser med VRF
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          address: "{{ int_map[item] }}/{{ interface_prefix_map[item] }}"
+          assigned_object:
+            device: "{{ inventory_hostname }}"
+            name: "{{ item }}"
+          vrf: "{{ int_vrf_map[item] }}"
+          status: active
+        state: present
+      loop: "{{ int_map.keys() | list }}"
+      when:
+        - interface_prefix_map[item] is defined
+        - int_vrf_map[item] is defined
+        - not (inventory_hostname == 'ISP-EDGE' and item == 'GigabitEthernet0/1')
+      delegate_to: localhost

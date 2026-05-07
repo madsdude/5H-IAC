@@ -1,0 +1,43 @@
+- name: Opret VRF'er i NetBox
+  hosts: isp
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent VRF config
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | section ^ip vrf
+      register: vrf_config
+
+    - name: Byg liste med VRF-navne
+      set_fact:
+        vrf_names: >-
+          {{
+            vrf_config.stdout_lines[0]
+            | select('match', '^ip vrf ')
+            | map('regex_replace', '^ip vrf ', '')
+            | list
+          }}
+
+    - name: Vis fundne VRF'er
+      debug:
+        var: vrf_names
+
+    - name: Opret VRF'er i NetBox
+      netbox.netbox.netbox_vrf:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ item }}"
+        state: present
+      loop: "{{ vrf_names }}"
+      delegate_to: localhost

@@ -1,5 +1,5 @@
 - name: Parse CDP links
-  hosts: isp
+  hosts: "{{ target_hosts }}"
   gather_facts: no
 
   vars:
@@ -18,27 +18,6 @@
           - show cdp neighbors detail
       register: cdp_output
 
-    - name: Parse CDP entries
-      set_fact:
-        cdp_matches: >-
-          {{
-            cdp_output.stdout[0]
-            | regex_findall('Device ID: (.+?)\\n[\\s\\S]*?Interface: (.+?),  Port ID \\(outgoing port\\): (.+?)\\n')
-          }}
-
-    - name: Byg filtreret CDP-liste
-      set_fact:
-        cdp_links: "{{ cdp_links | default([]) + [ {
-          'local_device': inventory_hostname,
-          'local_interface': item.1,
-          'remote_device_raw': item.0,
-          'remote_device': (item.0.split('.')[0]),
-          'remote_interface': item.2
-        } ] }}"
-      loop: "{{ cdp_matches }}"
-      when:
-        - item.0.split('.')[0] is match('^ISP-')
-
-    - name: Vis CDP links
+    - name: Vis rå CDP output
       debug:
-        var: cdp_links
+        var: cdp_output.stdout_lines

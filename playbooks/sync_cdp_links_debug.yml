@@ -38,8 +38,8 @@
         idx: "{{ ansible_loop.index0 }}"
       loop: "{{ cdp_output.stdout_lines[0] }}"
       when:
-        - item is match('^Device ID: ')
-        - item | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '') is match('^ISP-')
+        - item is match("^Device ID: ")
+        - (item | regex_replace("^Device ID: ", "") | regex_replace("\\..*$", "")) is match("^ISP-")
 
     - name: Vis parsed links
       debug:

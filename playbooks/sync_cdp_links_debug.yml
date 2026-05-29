@@ -35,8 +35,9 @@
         remote_dev: "{{ item | regex_replace('^Device ID: ', '') }}"
         local_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: ([^,]+),\\s+Port ID \\(outgoing port\\): .+$', '\\1') }}"
         remote_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: [^,]+,\\s+Port ID \\(outgoing port\\): (.+)$', '\\1') }}"
-        idx: "{{ ansible_loop.index0 }}"
       loop: "{{ cdp_output.stdout_lines[0] }}"
+      loop_control:
+        index_var: idx
       when:
         - "item is match('^Device ID: ')"
         - "(item | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '')) is match('^ISP-')"

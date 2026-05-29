@@ -42,6 +42,13 @@
     - name: Vis parsed links
       debug:
         var: cdp_links
+        
+    - name: Vis hvilket kabel der oprettes
+      debug:
+        msg:
+          - "Local: {{ item.local_device }} {{ item.local_interface }}"
+          - "Remote: {{ item.remote_device }} {{ item.remote_interface }}"
+      loop: "{{ cdp_links }}"
 
     - name: Opret kabel i NetBox
       netbox.netbox.netbox_cable:
@@ -60,5 +67,5 @@
         state: present
       loop: "{{ cdp_links }}"
       when:
-        - item.local_device < item.remote_device
+        - force_create_cable | default('false') == 'true' or item.local_device < item.remote_device
       delegate_to: localhost

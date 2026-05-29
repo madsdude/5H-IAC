@@ -39,7 +39,7 @@
       loop_control:
         loop_var: idx
       when:
-        - cdp_output.stdout_lines[0][idx] is match('^Device ID: ')
+        - "cdp_output.stdout_lines[0][idx] is match('^Device ID: ')"
         - "(cdp_output.stdout_lines[0][idx] | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '')) is match('^ISP-')"
 
     - name: Vis parsed links

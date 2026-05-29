@@ -1,0 +1,67 @@
+- name: Opret CDP links i NetBox
+  hosts: "{{ target_hosts }}"
+  gather_facts: no
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_network_cli_ssh_type: paramiko
+    ansible_user: "{{ SSHA }}"
+    ansible_password: "{{ SSHP }}"
+    ansible_become: false
+    ansible_ssh_common_args: "{{ SSH_KEX }}"
+
+  tasks:
+    - name: Hent CDP neighbors detail
+      cisco.ios.ios_command:
+        commands:
+          - show cdp neighbors detail
+      register: cdp_output
+
+    - name: Nulstil cdp_links
+      set_fact:
+        cdp_links: []
+
+    - name: Byg CDP links fra output-linjer
+      set_fact:
+        cdp_links: "{{ cdp_links + [ {
+          'local_device': inventory_hostname,
+          'local_interface': local_if,
+          'remote_device_raw': remote_dev,
+          'remote_device': remote_dev.split('.')[0],
+          'remote_interface': remote_if
+        } ] }}"
+      vars:
+        remote_dev: "{{ item | regex_replace('^Device ID: ', '') }}"
+        local_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: ([^,]+),\\s+Port ID \\(outgoing port\\): .+$', '\\1') }}"
+        remote_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: [^,]+,\\s+Port ID \\(outgoing port\\): (.+)$', '\\1') }}"
+      loop: "{{ cdp_output.stdout_lines[0] }}"
+      loop_control:
+        index_var: idx
+      when:
+        - "item is match('^Device ID: ')"
+        - "(item | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '')) is match('^ISP-')"
+
+    - name: Vis parsed links
+      debug:
+        var: cdp_links
+
+    - name: Opret kabel i NetBox
+      netbox.netbox.netbox_cable:
+        netbox_url: "{{ NETBOX_URL }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          termination_a_type: dcim.interface
+          termination_a:
+            device: "{{ item.local_device }}"
+            name: "{{ item.local_interface }}"
+          termination_b_type: dcim.interface
+          termination_b:
+            device: "{{ item.remote_device }}"
+            name: "{{ item.remote_interface }}"
+          status: connected
+        state: present
+      loop: "{{ cdp_links }}"
+      when:
+        - item.local_device < item.remote_device
+      delegate_to: localhost

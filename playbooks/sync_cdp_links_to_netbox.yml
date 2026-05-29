@@ -32,12 +32,15 @@
           'remote_interface': remote_if
         } ] }}"
       vars:
-        remote_dev: "{{ item | regex_replace('^Device ID: ', '') }}"
+        remote_dev: "{{ cdp_output.stdout_lines[0][idx] | regex_replace('^Device ID: ', '') }}"
         local_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: ([^,]+),\\s+Port ID \\(outgoing port\\): .+$', '\\1') }}"
         remote_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: [^,]+,\\s+Port ID \\(outgoing port\\): (.+)$', '\\1') }}"
-      loop: "{{ cdp_output.stdout_lines[0] }}"
+      loop: "{{ range(0, (cdp_output.stdout_lines[0] | length) - 4) | list }}"
       loop_control:
-        index_var: idx
+        loop_var: idx
+      when:
+        - cdp_output.stdout_lines[0][idx] is match('^Device ID: ')
+        - "(cdp_output.stdout_lines[0][idx] | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '')) is match('^ISP-')"
 
     - name: Vis parsed links
       debug:

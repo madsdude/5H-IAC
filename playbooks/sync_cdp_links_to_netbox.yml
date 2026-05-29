@@ -70,5 +70,11 @@
         state: present
       loop: "{{ cdp_links }}"
       when:
-        - force_create_cable | default('false') == 'true' or item.local_device < item.remote_device
+        - (force_create_cable | default(false) | bool) or (item.local_device < item.remote_device)
       delegate_to: localhost
+
+    - name: Vis force_create_cable værdi
+      debug:
+        msg:
+          - "force_create_cable={{ force_create_cable | default('UNDEFINED') }}"
+          - "force_create_cable_bool={{ force_create_cable | default(false) | bool }}"

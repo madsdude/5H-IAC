@@ -18,26 +18,28 @@
           - show cdp neighbors detail
       register: cdp_output
 
-    - name: Parse CDP entries
+    - name: Nulstil cdp_links
       set_fact:
-        cdp_matches: >-
-          {{
-            cdp_output.stdout[0]
-            | regex_findall('Device ID: (.+?)\\n[\\s\\S]*?Interface: (.+?),\\s+Port ID \\(outgoing port\\): (.+?)\\n')
-          }}
+        cdp_links: []
 
-    - name: Byg CDP links
+    - name: Byg CDP links fra output-linjer
       set_fact:
-        cdp_links: "{{ cdp_links | default([]) + [ {
+        cdp_links: "{{ cdp_links + [ {
           'local_device': inventory_hostname,
-          'local_interface': item.1,
-          'remote_device_raw': item.0,
-          'remote_device': item.0.split('.')[0],
-          'remote_interface': item.2
+          'local_interface': local_if,
+          'remote_device_raw': remote_dev,
+          'remote_device': remote_dev.split('.')[0],
+          'remote_interface': remote_if
         } ] }}"
-      loop: "{{ cdp_matches }}"
+      vars:
+        remote_dev: "{{ item | regex_replace('^Device ID: ', '') }}"
+        local_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: ([^,]+),\\s+Port ID \\(outgoing port\\): .+$', '\\1') }}"
+        remote_if: "{{ cdp_output.stdout_lines[0][idx + 4] | regex_replace('^Interface: [^,]+,\\s+Port ID \\(outgoing port\\): (.+)$', '\\1') }}"
+        idx: "{{ ansible_loop.index0 }}"
+      loop: "{{ cdp_output.stdout_lines[0] }}"
       when:
-        - item.0.split('.')[0] is match('^ISP-')
+        - item is match('^Device ID: ')
+        - item | regex_replace('^Device ID: ', '') | regex_replace('\\..*$', '') is match('^ISP-')
 
     - name: Vis parsed links
       debug:
